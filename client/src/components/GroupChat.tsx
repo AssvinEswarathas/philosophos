@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import Sidebar from './Sidebar'
+import type { Conversation } from './Sidebar'
 import './GroupChat.css'
 
 const COLORS: Record<string, string> = {
@@ -44,7 +46,7 @@ interface ChatMessage {
   done: boolean
 }
 
-interface Conversation {
+interface ConversationData {
   id: string
   title: string
   messages: ChatMessage[]
@@ -56,7 +58,7 @@ interface Props {
 }
 
 export default function GroupChat({ initialMessage, onBack }: Props) {
-  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [conversations, setConversations] = useState<ConversationData[]>([])
   const [activeId, setActiveId] = useState<string>('')
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
@@ -65,37 +67,66 @@ export default function GroupChat({ initialMessage, onBack }: Props) {
   const [showMention, setShowMention] = useState(false)
   const [mentionFilter, setMentionFilter] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [activePhilosophers, setActivePhilosophers] = useState<string[]>(Object.keys(LABELS))
   const ws = useRef<WebSocket | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const activeMessages = useRef<Record<string, string>>({})
+  const firstToken = useRef<Record<string, boolean>>({})
   const initialSent = useRef(false)
   const currentConvId = useRef<string>('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   const createNewChat = () => {
     const id = `conv-${Date.now()}`
-    const newConv: Conversation = { id, title: 'New conversation', messages: [] }
+    const newConv: ConversationData = { id, title: 'New conversation', messages: [] }
     setConversations(prev => [newConv, ...prev])
     setActiveId(id)
     currentConvId.current = id
     setMessages([])
   }
 
-  const switchConversation = (conv: Conversation) => {
-    setActiveId(conv.id)
-    currentConvId.current = conv.id
-    setMessages(conv.messages)
+  const switchConversation = (id: string) => {
+    const conv = conversations.find(c => c.id === id)
+    if (conv) {
+      setActiveId(id)
+      currentConvId.current = id
+      setMessages(conv.messages)
+    }
+  }
+
+  const renameConversation = (id: string, title: string) => {
+    setConversations(prev => prev.map(c => c.id === id ? { ...c, title } : c))
+  }
+
+  const deleteConversation = (id: string) => {
+    setConversations(prev => {
+      const updated = prev.filter(c => c.id !== id)
+      if (id === activeId) {
+        if (updated.length > 0) {
+          setActiveId(updated[0].id)
+          currentConvId.current = updated[0].id
+          setMessages(updated[0].messages)
+        } else {
+          createNewChat()
+        }
+      }
+      return updated
+    })
+  }
+
+  const togglePhilosopher = (key: string) => {
+    setActivePhilosophers(prev =>
+      prev.includes(key)
+        ? prev.length > 1 ? prev.filter(p => p !== key) : prev
+        : [...prev, key]
+    )
   }
 
   useEffect(() => {
     const id = `conv-${Date.now()}`
     currentConvId.current = id
     setActiveId(id)
-    const initial: Conversation = {
-      id,
-      title: initialMessage || 'New conversation',
-      messages: []
-    }
+    const initial: ConversationData = { id, title: initialMessage || 'New conversation', messages: [] }
     setConversations([initial])
 
     ws.current = new WebSocket('ws://localhost:4000')
@@ -113,27 +144,33 @@ export default function GroupChat({ initialMessage, onBack }: Props) {
       if (msg.type === 'response_start') {
         setResponding(true)
         activeMessages.current = {}
+        firstToken.current = {}
       }
 
       if (msg.type === 'turn_start') {
         const id = `${msg.philosopher}-${Date.now()}`
         activeMessages.current[msg.philosopher] = id
+        firstToken.current[msg.philosopher] = false
         setTypingPhilosophers(prev => [...prev, msg.philosopher])
-        const newMsg: ChatMessage = {
-          id, type: 'philosopher', philosopher: msg.philosopher, content: '', done: false,
-        }
-        setMessages(prev => [...prev, newMsg])
-        setConversations(prev => prev.map(c =>
-          c.id === currentConvId.current ? { ...c, messages: [...c.messages, newMsg] } : c
-        ))
       }
 
       if (msg.type === 'token') {
         const id = activeMessages.current[msg.philosopher]
-        setTypingPhilosophers(prev => prev.filter(p => p !== msg.philosopher))
-        setMessages(prev => prev.map(m =>
-          m.id === id ? { ...m, content: m.content + msg.delta } : m
-        ))
+        if (!firstToken.current[msg.philosopher]) {
+          firstToken.current[msg.philosopher] = true
+          setTypingPhilosophers(prev => prev.filter(p => p !== msg.philosopher))
+          const newMsg: ChatMessage = {
+            id, type: 'philosopher', philosopher: msg.philosopher, content: msg.delta, done: false
+          }
+          setMessages(prev => [...prev, newMsg])
+          setConversations(prev => prev.map(c =>
+            c.id === currentConvId.current ? { ...c, messages: [...c.messages, newMsg] } : c
+          ))
+        } else {
+          setMessages(prev => prev.map(m =>
+            m.id === id ? { ...m, content: m.content + msg.delta } : m
+          ))
+        }
       }
 
       if (msg.type === 'turn_end') {
@@ -174,24 +211,21 @@ export default function GroupChat({ initialMessage, onBack }: Props) {
 
   const insertMention = (name: string) => {
     const atIndex = input.lastIndexOf('@')
-    const newInput = input.slice(0, atIndex) + `@${name} `
-    setInput(newInput)
+    setInput(input.slice(0, atIndex) + `@${name} `)
     setShowMention(false)
     inputRef.current?.focus()
   }
 
   const sendMessage = (text: string) => {
     if (!text.trim() || responding || ws.current?.readyState !== WebSocket.OPEN) return
-    const userMsg: ChatMessage = {
-      id: `user-${Date.now()}`, type: 'user', content: text, done: true,
-    }
+    const userMsg: ChatMessage = { id: `user-${Date.now()}`, type: 'user', content: text, done: true }
     setMessages(prev => [...prev, userMsg])
     setConversations(prev => prev.map(c =>
       c.id === currentConvId.current
         ? { ...c, title: c.title === 'New conversation' ? text.slice(0, 40) : c.title, messages: [...c.messages, userMsg] }
         : c
     ))
-    ws.current!.send(JSON.stringify({ type: 'chat', text }))
+    ws.current!.send(JSON.stringify({ type: 'chat', text, philosophers: activePhilosophers }))
   }
 
   const send = () => {
@@ -206,40 +240,23 @@ export default function GroupChat({ initialMessage, onBack }: Props) {
     k.startsWith(mentionFilter) || LABELS[k].toLowerCase().startsWith(mentionFilter)
   )
 
-  const isEmpty = messages.length === 0
+  const sidebarConvs: Conversation[] = conversations.map(c => ({ id: c.id, title: c.title }))
 
   return (
     <div className="app-shell">
-      <div className={`sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
-        <div className="sidebar-top">
-          <div className="sidebar-logo">PhilosophOS</div>
-          <button className="new-chat-btn" onClick={createNewChat}>+ New chat</button>
-        </div>
-        <div className="sidebar-section-label">Recent</div>
-        <div className="sidebar-convs">
-          {conversations.map(conv => (
-            <div
-              key={conv.id}
-              className={`sidebar-conv ${conv.id === activeId ? 'active' : ''}`}
-              onClick={() => switchConversation(conv)}
-            >
-              <span className="sidebar-conv-icon">💬</span>
-              <span className="sidebar-conv-title">{conv.title}</span>
-            </div>
-          ))}
-        </div>
-        <div className="sidebar-bottom">
-          <div className="sidebar-item" onClick={onBack}>← Back to home</div>
-          <div className="sidebar-item">⚙ Settings</div>
-          <div className="sidebar-philosophers">
-            {Object.entries(LABELS).map(([key, name]) => (
-              <span key={key} style={{ color: COLORS[key] }} onClick={() => { setInput(prev => prev + `@${key} `); inputRef.current?.focus() }}>
-                @{name.toLowerCase()}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
+      {sidebarOpen && (
+        <Sidebar
+          conversations={sidebarConvs}
+          activeId={activeId}
+          onSelect={switchConversation}
+          onNew={createNewChat}
+          onRename={renameConversation}
+          onDelete={deleteConversation}
+          onBack={onBack}
+          activePhilosophers={activePhilosophers}
+          onTogglePhilosopher={togglePhilosopher}
+        />
+      )}
 
       <div className="chat-main">
         <div className="chat-topbar">
@@ -250,13 +267,13 @@ export default function GroupChat({ initialMessage, onBack }: Props) {
         </div>
 
         <div className="chat-messages">
-          {isEmpty && (
+          {messages.length === 0 && !responding && (
             <div className="empty-state">
               <div className="empty-title">What's on your mind?</div>
               <div className="empty-sub">Ask the philosophers anything, or pick a topic to get started.</div>
               <div className="topic-pills">
                 {SUGGESTED_TOPICS.map(topic => (
-                  <button key={topic} className="topic-pill" onClick={() => { sendMessage(topic) }}>
+                  <button key={topic} className="topic-pill" onClick={() => sendMessage(topic)}>
                     {topic}
                   </button>
                 ))}
@@ -268,16 +285,11 @@ export default function GroupChat({ initialMessage, onBack }: Props) {
             <div key={msg.id} className={`msg ${msg.type}`}>
               {msg.type === 'philosopher' && (
                 <div className="msg-row">
-                  <div
-                    className="philosopher-avatar"
-                    style={{ background: COLORS[msg.philosopher!] + '22', color: COLORS[msg.philosopher!] }}
-                  >
+                  <div className="philosopher-avatar" style={{ background: COLORS[msg.philosopher!] + '22', color: COLORS[msg.philosopher!] }}>
                     {INITIALS[msg.philosopher!]}
                   </div>
                   <div className="msg-content">
-                    <div className="msg-name" style={{ color: COLORS[msg.philosopher!] }}>
-                      {LABELS[msg.philosopher!]}
-                    </div>
+                    <div className="msg-name" style={{ color: COLORS[msg.philosopher!] }}>{LABELS[msg.philosopher!]}</div>
                     <div className="msg-bubble philosopher-bubble">
                       {msg.content}
                       {!msg.done && <span className="cursor">▌</span>}
@@ -294,17 +306,10 @@ export default function GroupChat({ initialMessage, onBack }: Props) {
           {typingPhilosophers.map(p => (
             <div key={`typing-${p}`} className="msg philosopher">
               <div className="msg-row">
-                <div
-                  className="philosopher-avatar"
-                  style={{ background: COLORS[p] + '22', color: COLORS[p] }}
-                >
-                  {INITIALS[p]}
-                </div>
+                <div className="philosopher-avatar" style={{ background: COLORS[p] + '22', color: COLORS[p] }}>{INITIALS[p]}</div>
                 <div className="msg-content">
                   <div className="msg-name" style={{ color: COLORS[p] }}>{LABELS[p]}</div>
-                  <div className="typing-indicator">
-                    <span /><span /><span />
-                  </div>
+                  <div className="typing-indicator"><span /><span /><span /></div>
                 </div>
               </div>
             </div>
@@ -318,9 +323,7 @@ export default function GroupChat({ initialMessage, onBack }: Props) {
             <div className="mention-popup">
               {filteredPhilosophers.map(p => (
                 <div key={p} className="mention-item" onClick={() => insertMention(p)}>
-                  <div className="mention-avatar" style={{ background: COLORS[p] + '22', color: COLORS[p] }}>
-                    {INITIALS[p]}
-                  </div>
+                  <div className="mention-avatar" style={{ background: COLORS[p] + '22', color: COLORS[p] }}>{INITIALS[p]}</div>
                   <div>
                     <div className="mention-name">{LABELS[p]}</div>
                     <div className="mention-handle">@{p}</div>

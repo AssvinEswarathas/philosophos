@@ -36,7 +36,6 @@ function send(ws: WebSocket, data: object) {
 function detectMentions(text: string): PhilosopherName[] {
   const lower = text.toLowerCase();
   const mentioned: PhilosopherName[] = [];
-  
   const aliases: Record<string, PhilosopherName> = {
     '@nietzsche': 'nietzsche',
     '@nietzche': 'nietzsche',
@@ -47,13 +46,11 @@ function detectMentions(text: string): PhilosopherName[] {
     '@aurelius': 'aurelius',
     '@marcus': 'aurelius',
   };
-
   for (const [alias, philosopher] of Object.entries(aliases)) {
     if (lower.includes(alias) && !mentioned.includes(philosopher)) {
       mentioned.push(philosopher);
     }
   }
-
   return mentioned;
 }
 
@@ -108,10 +105,18 @@ export function setupWebSocket(server: Server) {
 
         if (message.type === 'chat') {
           const userText: string = message.text;
+          const activePhilosophers: PhilosopherName[] = message.philosophers || ALL_PHILOSOPHERS;
           history.push({ role: 'user', content: userText });
 
           const mentioned = detectMentions(userText);
-          const philosophers = mentioned.length > 0 ? mentioned : ALL_PHILOSOPHERS;
+          let philosophers: PhilosopherName[];
+
+          if (mentioned.length > 0) {
+            philosophers = mentioned.filter(p => activePhilosophers.includes(p));
+            if (philosophers.length === 0) philosophers = mentioned;
+          } else {
+            philosophers = activePhilosophers;
+          }
 
           send(ws, { type: 'response_start', philosophers });
 
