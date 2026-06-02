@@ -37,14 +37,9 @@ function detectMentions(text: string): PhilosopherName[] {
   const lower = text.toLowerCase();
   const mentioned: PhilosopherName[] = [];
   const aliases: Record<string, PhilosopherName> = {
-    '@nietzsche': 'nietzsche',
-    '@nietzche': 'nietzsche',
-    '@niet': 'nietzsche',
-    '@kant': 'kant',
-    '@sartre': 'sartre',
-    '@camus': 'camus',
-    '@aurelius': 'aurelius',
-    '@marcus': 'aurelius',
+    '@nietzsche': 'nietzsche', '@nietzche': 'nietzsche', '@niet': 'nietzsche',
+    '@kant': 'kant', '@sartre': 'sartre', '@camus': 'camus',
+    '@aurelius': 'aurelius', '@marcus': 'aurelius',
   };
   for (const [alias, philosopher] of Object.entries(aliases)) {
     if (lower.includes(alias) && !mentioned.includes(philosopher)) {
@@ -54,14 +49,81 @@ function detectMentions(text: string): PhilosopherName[] {
   return mentioned;
 }
 
+async function streamPhilosopherResponse(
+  philosopher: PhilosopherName,
+  systemPrompt: string,
+  history: { role: 'user' | 'assistant', content: string }[],
+  ws: WebSocket
+): Promise<string> {
+  send(ws, { type: 'turn_start', philosopher });
+
+  const stream = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [{ role: 'system', content: systemPrompt }, ...history],
+    stream: true,
+  });
+
+  let fullContent = '';
+  for await (const chunk of stream) {
+    const delta = chunk.choices[0]?.delta?.content ?? '';
+    if (delta) {
+      fullContent += delta;
+      send(ws, { type: 'token', philosopher, delta });
+    }
+  }
+
+  send(ws, { type: 'turn_end', philosopher });
+  return fullContent;
+}
+
+async function runDebate(
+  ws: WebSocket,
+  topic: string,
+  proposition: PhilosopherName,
+  opposition: PhilosopherName
+) {
+  const stages = [
+    { role: 'proposition', label: 'Opening Statement', instruction: `You are arguing FOR the proposition: "${topic}". Give a compelling opening statement supporting this position. Be passionate and grounded. 3-5 sentences.` },
+    { role: 'opposition', label: 'Opening Statement', instruction: `You are arguing AGAINST the proposition: "${topic}". Give a compelling opening statement opposing this position. 3-5 sentences.` },
+    { role: 'proposition', label: 'Rebuttal', instruction: `You are arguing FOR "${topic}". The opposition just made their opening statement. Directly rebut their argument and reinforce your position. 3-5 sentences.` },
+    { role: 'opposition', label: 'Rebuttal', instruction: `You are arguing AGAINST "${topic}". The proposition just made their rebuttal. Directly counter their points and strengthen your opposition. 3-5 sentences.` },
+    { role: 'proposition', label: 'Closing Statement', instruction: `You are arguing FOR "${topic}". Make your final closing statement. Summarize your strongest points and end powerfully. 3-5 sentences.` },
+    { role: 'opposition', label: 'Closing Statement', instruction: `You are arguing AGAINST "${topic}". Make your final closing statement. Summarize why the proposition fails and close decisively. 3-5 sentences.` },
+  ]
+
+  const history: { role: 'user' | 'assistant', content: string }[] = []
+
+  send(ws, { type: 'debate_start', topic, proposition, opposition })
+
+  for (const stage of stages) {
+    const philosopher = stage.role === 'proposition' ? proposition : opposition
+    const basePrompt = prompts[philosopher]
+    const systemPrompt = `${basePrompt}
+
+You are participating in a formal structured debate.
+Stage: ${stage.label}
+Your position: ${stage.role === 'proposition' ? 'PROPOSITION (FOR)' : 'OPPOSITION (AGAINST)'}
+Instructions: ${stage.instruction}
+
+CRITICAL: Argue this position fully even if it differs from your usual views. Never say your own name. Speak directly.`
+
+    send(ws, { type: 'debate_stage', stage: stage.label, role: stage.role, philosopher })
+
+    const response = await streamPhilosopherResponse(philosopher, systemPrompt, history, ws)
+    history.push({ role: 'assistant', content: `${stage.label} (${stage.role}): ${response}` })
+  }
+
+  send(ws, { type: 'debate_end' })
+}
+
 async function getPhilosopherResponse(
   philosopher: PhilosopherName,
   history: Message[],
   ws: WebSocket
-) {
+): Promise<string> {
   send(ws, { type: 'turn_start', philosopher });
 
-  const contextPrompt = prompts[philosopher] + '\n\nIMPORTANT: Never start your response with your own name. Never prefix with "NIETZSCHE:" or similar. Just speak directly.';
+  const contextPrompt = prompts[philosopher] + '\n\nCRITICAL: Never start with your name. Never write your name followed by a colon. Just speak directly.';
 
   const formattedHistory = history.map(m => ({
     role: m.role as 'user' | 'assistant',
@@ -72,10 +134,7 @@ async function getPhilosopherResponse(
 
   const stream = await openai.chat.completions.create({
     model: 'gpt-4o',
-    messages: [
-      { role: 'system', content: contextPrompt },
-      ...formattedHistory,
-    ],
+    messages: [{ role: 'system', content: contextPrompt }, ...formattedHistory],
     stream: true,
   });
 
@@ -110,7 +169,6 @@ export function setupWebSocket(server: Server) {
 
           const mentioned = detectMentions(userText);
           let philosophers: PhilosopherName[];
-
           if (mentioned.length > 0) {
             philosophers = mentioned.filter(p => activePhilosophers.includes(p));
             if (philosophers.length === 0) philosophers = mentioned;
@@ -126,6 +184,10 @@ export function setupWebSocket(server: Server) {
           }
 
           send(ws, { type: 'response_end' });
+        }
+
+        if (message.type === 'start_debate') {
+          await runDebate(ws, message.topic, message.proposition, message.opposition);
         }
       } catch (err) {
         console.error(err);

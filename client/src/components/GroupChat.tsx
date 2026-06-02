@@ -55,9 +55,10 @@ interface ConversationData {
 interface Props {
   initialMessage?: string
   onBack: () => void
+  onDebate: () => void
 }
 
-export default function GroupChat({ initialMessage, onBack }: Props) {
+export default function GroupChat({ initialMessage, onBack, onDebate }: Props) {
   const [conversations, setConversations] = useState<ConversationData[]>([])
   const [activeId, setActiveId] = useState<string>('')
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -68,6 +69,9 @@ export default function GroupChat({ initialMessage, onBack }: Props) {
   const [mentionFilter, setMentionFilter] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [activePhilosophers, setActivePhilosophers] = useState<string[]>(Object.keys(LABELS))
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState('')
+  const titleInputRef = useRef<HTMLInputElement>(null)
   const ws = useRef<WebSocket | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const activeMessages = useRef<Record<string, string>>({})
@@ -120,6 +124,18 @@ export default function GroupChat({ initialMessage, onBack }: Props) {
         ? prev.length > 1 ? prev.filter(p => p !== key) : prev
         : [...prev, key]
     )
+  }
+
+  const startTitleEdit = () => {
+    const current = conversations.find(c => c.id === activeId)?.title || 'New conversation'
+    setTitleDraft(current)
+    setEditingTitle(true)
+    setTimeout(() => titleInputRef.current?.select(), 0)
+  }
+
+  const confirmTitleEdit = () => {
+    if (titleDraft.trim()) renameConversation(activeId, titleDraft.trim())
+    setEditingTitle(false)
   }
 
   useEffect(() => {
@@ -248,11 +264,14 @@ export default function GroupChat({ initialMessage, onBack }: Props) {
         <Sidebar
           conversations={sidebarConvs}
           activeId={activeId}
+          activeMode="chat"
           onSelect={switchConversation}
           onNew={createNewChat}
           onRename={renameConversation}
           onDelete={deleteConversation}
           onBack={onBack}
+          onDebate={onDebate}
+          onChat={() => {}}
           activePhilosophers={activePhilosophers}
           onTogglePhilosopher={togglePhilosopher}
         />
@@ -261,9 +280,24 @@ export default function GroupChat({ initialMessage, onBack }: Props) {
       <div className="chat-main">
         <div className="chat-topbar">
           <button className="toggle-sidebar" onClick={() => setSidebarOpen(p => !p)}>☰</button>
-          <div className="chat-topbar-title">
-            {conversations.find(c => c.id === activeId)?.title || 'New conversation'}
-          </div>
+          {editingTitle ? (
+            <input
+              ref={titleInputRef}
+              className="topbar-title-input"
+              value={titleDraft}
+              onChange={e => setTitleDraft(e.target.value)}
+              onBlur={confirmTitleEdit}
+              onKeyDown={e => {
+                if (e.key === 'Enter') confirmTitleEdit()
+                if (e.key === 'Escape') setEditingTitle(false)
+              }}
+            />
+          ) : (
+            <div className="chat-topbar-title editable" onClick={startTitleEdit} title="Click to rename">
+              {conversations.find(c => c.id === activeId)?.title || 'New conversation'}
+              <span className="topbar-edit-hint">✎</span>
+            </div>
+          )}
         </div>
 
         <div className="chat-messages">

@@ -3,118 +3,11 @@
   height: 100vh;
   background: #fff;
   overflow: hidden;
+  width: 100vw;   /* add this */
 }
-
-.sidebar {
-  width: 260px;
-  min-width: 260px;
-  background: #f9f9f9;
-  border-right: 1px solid #efefef;
-  display: flex;
-  flex-direction: column;
-  transition: width 0.2s, min-width 0.2s;
-  overflow: hidden;
-}
-.sidebar.closed { width: 0; min-width: 0; }
-
-.sidebar-top {
-  padding: 20px 16px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.sidebar-logo {
-  font-size: 16px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  color: #111;
-}
-.new-chat-btn {
-  background: #6B4FBB;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  text-align: left;
-  transition: background 0.2s;
-}
-.new-chat-btn:hover { background: #5a3fa8; }
-
-.sidebar-section-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #aaa;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  padding: 8px 16px 4px;
-}
-.sidebar-convs {
-  flex: 1;
-  overflow-y: auto;
-  padding: 4px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.sidebar-conv {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.15s;
-  min-width: 0;
-}
-.sidebar-conv:hover { background: #efefef; }
-.sidebar-conv.active { background: #ede9ff; }
-.sidebar-conv-icon { font-size: 14px; flex-shrink: 0; }
-.sidebar-conv-title {
-  font-size: 13px;
-  color: #333;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.sidebar-conv.active .sidebar-conv-title { color: #6B4FBB; font-weight: 600; }
-
-.sidebar-bottom {
-  padding: 12px 8px 20px;
-  border-top: 1px solid #efefef;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.sidebar-item {
-  padding: 9px 10px;
-  font-size: 13px;
-  color: #666;
-  font-weight: 500;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.15s;
-  white-space: nowrap;
-}
-.sidebar-item:hover { background: #efefef; color: #111; }
-.sidebar-philosophers {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 10px 10px 0;
-}
-.sidebar-philosophers span {
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
 .chat-main {
-  flex: 1;
+  flex: 1 1 0;    /* change from flex: 1 */
+  min-width: 0;   /* add this — critical */
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -134,56 +27,48 @@
   color: #666;
   padding: 4px 8px;
   border-radius: 6px;
-  transition: background 0.15s;
 }
-.toggle-sidebar:hover { background: #f0f0f0; color: #111; }
+.toggle-sidebar:hover { background: #f0f0f0; }
 .chat-topbar-title {
   font-size: 15px;
   font-weight: 600;
   color: #111;
-  letter-spacing: -0.3px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-
 .chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 32px 40px;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  padding: 40px 60px;   /* increase horizontal padding */
 }
-
-/* Empty state */
 .empty-state {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex: 1;
-  padding: 60px 20px;
   text-align: center;
-  gap: 12px;
+  gap: 16px;
+  padding: 40px;
+  width: 100%;
 }
 .empty-title {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 800;
-  letter-spacing: -1px;
+  letter-spacing: -1.5px;
   color: #111;
 }
 .empty-sub {
   font-size: 15px;
   color: #888;
-  margin-bottom: 8px;
 }
 .topic-pills {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   justify-content: center;
-  max-width: 640px;
+  max-width: 600px;
 }
 .topic-pill {
   background: #f8f7ff;
@@ -195,18 +80,12 @@
   font-weight: 500;
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.15s, transform 0.15s;
+  transition: background 0.15s;
 }
-.topic-pill:hover {
-  background: #ede9ff;
-  transform: translateY(-1px);
-}
-
-/* Messages */
+.topic-pill:hover { background: #ede9ff; }
 .msg { display: flex; flex-direction: column; }
 .msg.user { align-items: flex-end; }
 .msg.philosopher { align-items: flex-start; }
-
 .msg-row {
   display: flex;
   align-items: flex-start;
@@ -216,7 +95,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-width: 70%;
+  max-width: 65%;
 }
 .philosopher-avatar {
   width: 32px;
@@ -228,7 +107,6 @@
   font-size: 13px;
   font-weight: 800;
   flex-shrink: 0;
-  margin-top: 2px;
 }
 .msg-name {
   font-size: 11px;
@@ -237,26 +115,26 @@
   text-transform: uppercase;
   padding-left: 2px;
 }
-.msg-bubble {
+.philosopher-bubble {
   padding: 11px 16px;
   border-radius: 18px;
+  border-top-left-radius: 4px;
   font-size: 15px;
   line-height: 1.6;
-}
-.philosopher-bubble {
   background: #f8f7ff;
   color: #222;
   border: 1px solid #ede9ff;
-  border-top-left-radius: 4px;
 }
 .user-bubble {
+  padding: 11px 16px;
+  border-radius: 18px;
+  border-bottom-right-radius: 4px;
+  font-size: 15px;
+  line-height: 1.6;
   background: #6B4FBB;
   color: #fff;
-  border-bottom-right-radius: 4px;
-  max-width: 70%;
+  max-width: 65%;
 }
-
-/* Typing indicator */
 .typing-indicator {
   display: flex;
   align-items: center;
@@ -281,24 +159,27 @@
   0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
   30% { transform: translateY(-4px); opacity: 1; }
 }
-
 .cursor {
   animation: blink 0.8s step-end infinite;
   color: #aaa;
   margin-left: 2px;
 }
 @keyframes blink { 50% { opacity: 0; } }
-
-/* Input area */
 .chat-input-area {
-  padding: 12px 24px 24px;
+  padding: 12px 60px 24px;   /* match horizontal padding */
   border-top: 1px solid #f0f0f0;
   position: relative;
+  display: flex;
+  flex-direction: column;
 }
+
 .chat-input-row {
   display: flex;
   gap: 12px;
+  width: 100%;
 }
+  
+
 .chat-input {
   flex: 1;
   background: #f8f8f8;
@@ -328,8 +209,6 @@
 }
 .chat-send:hover { background: #5a3fa8; }
 .chat-send:disabled { opacity: 0.4; cursor: not-allowed; }
-
-/* Mention popup */
 .mention-popup {
   position: absolute;
   bottom: 80px;
@@ -360,14 +239,7 @@
   justify-content: center;
   font-size: 12px;
   font-weight: 800;
-  flex-shrink: 0;
 }
-.mention-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: #111;
-}
-.mention-handle {
-  font-size: 11px;
-  color: #aaa;
-}
+.mention-name { font-size: 13px; font-weight: 600; color: #111; }
+.mention-handle { font-size: 11px; color: #aaa; }
+

@@ -66,8 +66,9 @@
 }
 
 .sidebar-chevron {
-  font-size: 12px;
+  font-size: 16px;
   color: #bbb;
+  line-height: 1;
 }
 
 /* Philosopher filters */
@@ -256,3 +257,41 @@
   flex-direction: column;
   border-bottom: none;
 }
+.debate-item {
+  color: #6B4FBB !important;
+  font-weight: 600 !important;
+  background: #f5f3ff;
+  border: 1px solid #ede9ff;
+  margin-bottom: 4px;
+}
+.debate-item:hover { background: #ede9ff !important; }
+.sidebar-modes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border-bottom: 1px solid #efefef;
+}
+
+.mode-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #555;
+  transition: background 0.15s;
+}
+
+.mode-item:hover { background: #efefef; color: #111; }
+
+.mode-item.mode-active {
+  background: #ede9ff;
+  color: #6B4FBB;
+  font-weight: 700;
+}
+
+.mode-icon { font-size: 15px; }

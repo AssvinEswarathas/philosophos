@@ -10,19 +10,11 @@ const COLORS: Record<string, string> = {
 }
 
 const INITIALS: Record<string, string> = {
-  nietzsche: 'N',
-  kant:      'K',
-  sartre:    'S',
-  camus:     'C',
-  aurelius:  'A',
+  nietzsche: 'N', kant: 'K', sartre: 'S', camus: 'C', aurelius: 'A',
 }
 
 const LABELS: Record<string, string> = {
-  nietzsche: 'Nietzsche',
-  kant:      'Kant',
-  sartre:    'Sartre',
-  camus:     'Camus',
-  aurelius:  'Aurelius',
+  nietzsche: 'Nietzsche', kant: 'Kant', sartre: 'Sartre', camus: 'Camus', aurelius: 'Aurelius',
 }
 
 export interface Conversation {
@@ -33,18 +25,21 @@ export interface Conversation {
 interface Props {
   conversations: Conversation[]
   activeId: string
+  activeMode: 'chat' | 'debate'
   onSelect: (id: string) => void
   onNew: () => void
   onRename: (id: string, title: string) => void
   onDelete: (id: string) => void
   onBack: () => void
+  onDebate: () => void
+  onChat: () => void
   activePhilosophers: string[]
   onTogglePhilosopher: (key: string) => void
 }
 
 export default function Sidebar({
-  conversations, activeId, onSelect, onNew, onRename, onDelete, onBack,
-  activePhilosophers, onTogglePhilosopher
+  conversations, activeId, activeMode, onSelect, onNew, onRename, onDelete,
+  onBack, onDebate, onChat, activePhilosophers, onTogglePhilosopher
 }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
@@ -57,9 +52,7 @@ export default function Sidebar({
   }
 
   const confirmEdit = () => {
-    if (editingId && editingTitle.trim()) {
-      onRename(editingId, editingTitle.trim())
-    }
+    if (editingId && editingTitle.trim()) onRename(editingId, editingTitle.trim())
     setEditingId(null)
   }
 
@@ -67,15 +60,23 @@ export default function Sidebar({
     <div className="sidebar">
       <div className="sidebar-top">
         <div className="sidebar-logo">PhilosophOS</div>
-        <button className="new-chat-btn" onClick={onNew}>
-          + New chat
-        </button>
+        <button className="new-chat-btn" onClick={onNew}>+ New chat</button>
+      </div>
+
+      <div className="sidebar-modes">
+        <div className={`mode-item ${activeMode === 'chat' ? 'mode-active' : ''}`} onClick={onChat}>
+          Group Chat
+        </div>
+        <div className={`mode-item ${activeMode === 'debate' ? 'mode-active' : ''}`} onClick={onDebate}>
+          Debate Mode
+        </div>
       </div>
 
       <div className="sidebar-section">
         <div className="sidebar-section-header" onClick={() => setShowPhilosophers(p => !p)}>
           <span className="sidebar-section-label">Philosophers</span>
-          <span className="sidebar-chevron">{showPhilosophers ? '▾' : '▸'}</span>
+          <span className="sidebar-chevron" style={{ display: 'inline-block', transform: showPhilosophers ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>
+          </span>
         </div>
         {showPhilosophers && (
           <div className="philosopher-filters">
@@ -120,7 +121,6 @@ export default function Sidebar({
               onMouseEnter={() => setHoveredId(conv.id)}
               onMouseLeave={() => setHoveredId(null)}
             >
-              <span className="sidebar-conv-icon">💬</span>
               {editingId === conv.id ? (
                 <input
                   className="sidebar-rename-input"
@@ -149,8 +149,8 @@ export default function Sidebar({
       </div>
 
       <div className="sidebar-bottom">
-        <div className="sidebar-item" onClick={onBack}>← Back to home</div>
-        <div className="sidebar-item">⚙ Settings</div>
+        <div className="sidebar-item" onClick={onBack}>Back to home</div>
+        <div className="sidebar-item">Settings</div>
         <div className="sidebar-profile">
           <div className="sidebar-profile-avatar">AE</div>
           <div className="sidebar-profile-info">
