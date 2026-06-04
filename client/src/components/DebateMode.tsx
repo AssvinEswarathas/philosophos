@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import Sidebar from './Sidebar'
 import type { Conversation } from './Sidebar'
 import './DebateMode.css'
@@ -188,6 +188,8 @@ export default function DebateMode({ onBack, onChat }: Props) {
               <h2 className="debate-setup-title">Set up your debate</h2>
               <p className="debate-setup-sub">Pick two philosophers and a topic. Watch them argue it out in a structured formal debate.</p>
 
+              <div className="debate-setup-divider" />
+
               <div className="debate-field">
                 <label>Debate topic</label>
                 <input
@@ -257,85 +259,100 @@ export default function DebateMode({ onBack, onChat }: Props) {
         {(step === 'debating' || step === 'done') && (
           <div className="debate-arena">
             <div className="debate-header">
-              <button className="new-debate-btn" onClick={() => { setStep('setup'); setTurns([]) }}>New debate</button>
+              <button className="new-debate-btn" onClick={() => { setStep('setup'); setTurns([]) }}>
+                ← New debate
+              </button>
               <div className="debate-header-center">
                 <div className="debate-header-topic">"{topic}"</div>
                 <div className="debate-header-matchup">
-                  <span style={{ color: COLORS[proposition] }}>{LABELS[proposition]}</span>
-                  <span className="vs-text">vs</span>
-                  <span style={{ color: COLORS[opposition] }}>{LABELS[opposition]}</span>
+                  <span style={{ color: COLORS[proposition] }}>
+                    <span className="matchup-initial" style={{ background: COLORS[proposition] + '22', color: COLORS[proposition] }}>{INITIALS[proposition]}</span>
+                    {LABELS[proposition]}
+                  </span>
+                  <span className="vs-text">VS</span>
+                  <span style={{ color: COLORS[opposition] }}>
+                    <span className="matchup-initial" style={{ background: COLORS[opposition] + '22', color: COLORS[opposition] }}>{INITIALS[opposition]}</span>
+                    {LABELS[opposition]}
+                  </span>
                 </div>
               </div>
-              <div className="debate-header-status">
-                {step === 'debating' && activePhilosopher && `${LABELS[activePhilosopher]} is speaking...`}
-                {step === 'done' && 'Debate complete'}
-              </div>
-            </div>
-
-            <div className="debate-columns">
-              <div className="debate-column">
-                <div className="column-header" style={{ color: COLORS[proposition] }}>
-                  <div className="column-avatar" style={{ background: COLORS[proposition] + '20', color: COLORS[proposition] }}>{INITIALS[proposition]}</div>
-                  <div>
-                    <div className="column-name">{LABELS[proposition]}</div>
-                    <div className="column-role">Proposition</div>
-                  </div>
-                </div>
-                <div className="column-turns">
-                  {turns.filter(t => t.philosopher === proposition).map(turn => (
-                    <div key={turn.id} className="debate-turn proposition-turn">
-                      <div className="turn-stage-label">{turn.stage}</div>
-                      <div className="turn-content">
-                        {turn.content}
-                        {!turn.done && <span className="cursor">|</span>}
-                      </div>
-                    </div>
-                  ))}
-                  {activePhilosopher === proposition && (
-                    <div className="debate-turn proposition-turn typing">
-                      <div className="typing-indicator"><span /><span /><span /></div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="debate-divider">
-                {['Opening Statement', 'Rebuttal', 'Closing Statement'].map((stage, i) => (
-                  <div key={i} className="stage-marker">
-                    <div className="stage-marker-line" />
-                    <div className="stage-marker-label">{stage}</div>
-                    <div className="stage-marker-line" />
-                  </div>
-                ))}
-              </div>
-
-              <div className="debate-column">
-                <div className="column-header" style={{ color: COLORS[opposition] }}>
-                  <div className="column-avatar" style={{ background: COLORS[opposition] + '20', color: COLORS[opposition] }}>{INITIALS[opposition]}</div>
-                  <div>
-                    <div className="column-name">{LABELS[opposition]}</div>
-                    <div className="column-role">Opposition</div>
-                  </div>
-                </div>
-                <div className="column-turns">
-                  {turns.filter(t => t.philosopher === opposition).map(turn => (
-                    <div key={turn.id} className="debate-turn opposition-turn">
-                      <div className="turn-stage-label">{turn.stage}</div>
-                      <div className="turn-content">
-                        {turn.content}
-                        {!turn.done && <span className="cursor">|</span>}
-                      </div>
-                    </div>
-                  ))}
-                  {activePhilosopher === opposition && (
-                    <div className="debate-turn opposition-turn typing">
-                      <div className="typing-indicator"><span /><span /><span /></div>
-                    </div>
-                  )}
-                </div>
+              <div className="debate-status-right">
+                {step === 'debating' && activePhilosopher && (
+                  <span className="speaking-pill" style={{ color: COLORS[activePhilosopher], background: COLORS[activePhilosopher] + '18' }}>
+                    <span className="speaking-dot" style={{ background: COLORS[activePhilosopher] }} />
+                    {LABELS[activePhilosopher]}
+                  </span>
+                )}
+                {step === 'done' && <span className="done-pill">Complete</span>}
               </div>
             </div>
-            <div ref={bottomRef} />
+
+            <div className="debate-feed">
+              {turns.map((turn, i) => {
+                const prevTurn = turns[i - 1]
+                const isNewStage = !prevTurn || prevTurn.stage !== turn.stage
+                const isStreaming = !turn.done
+                return (
+                  <Fragment key={turn.id}>
+                    {isNewStage && (
+                      <div className="stage-banner">
+                        <div className="stage-banner-line" />
+                        <div className="stage-banner-label">{turn.stage}</div>
+                        <div className="stage-banner-line" />
+                      </div>
+                    )}
+                    <div
+                      className={`debate-card${isStreaming ? ' debate-card-streaming' : ''}`}
+                      style={{
+                        borderLeftColor: COLORS[turn.philosopher],
+                        ...(isStreaming && { boxShadow: `0 2px 20px ${COLORS[turn.philosopher]}22` }),
+                      }}
+                    >
+                      <div className="debate-card-header">
+                        <div className="debate-card-avatar" style={{ background: COLORS[turn.philosopher] + '20', color: COLORS[turn.philosopher] }}>
+                          {INITIALS[turn.philosopher]}
+                        </div>
+                        <span className="debate-card-name" style={{ color: COLORS[turn.philosopher] }}>{LABELS[turn.philosopher]}</span>
+                        <span className={`debate-card-role role-${turn.role}`}>
+                          {turn.role === 'proposition' ? 'Proposition' : 'Opposition'}
+                        </span>
+                      </div>
+                      <div className="debate-card-body">
+                        {turn.content}
+                        {isStreaming && <span className="cursor">|</span>}
+                      </div>
+                    </div>
+                  </Fragment>
+                )
+              })}
+
+              {activePhilosopher && !turns.some(t => t.philosopher === activePhilosopher && !t.done) && (
+                <Fragment>
+                  {currentStage !== turns[turns.length - 1]?.stage && (
+                    <div className="stage-banner">
+                      <div className="stage-banner-line" />
+                      <div className="stage-banner-label">{currentStage}</div>
+                      <div className="stage-banner-line" />
+                    </div>
+                  )}
+                  <div className="debate-card debate-card-waiting" style={{ borderLeftColor: COLORS[activePhilosopher] }}>
+                    <div className="debate-card-header">
+                      <div className="debate-card-avatar" style={{ background: COLORS[activePhilosopher] + '20', color: COLORS[activePhilosopher] }}>
+                        {INITIALS[activePhilosopher]}
+                      </div>
+                      <span className="debate-card-name" style={{ color: COLORS[activePhilosopher] }}>{LABELS[activePhilosopher]}</span>
+                    </div>
+                    <div className="typing-indicator"><span /><span /><span /></div>
+                  </div>
+                </Fragment>
+              )}
+
+              {step === 'done' && turns.length > 0 && (
+                <div className="debate-end-banner">The debate has concluded</div>
+              )}
+
+              <div ref={bottomRef} />
+            </div>
           </div>
         )}
       </div>
