@@ -1,6 +1,8 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import Sidebar from './Sidebar'
 import type { Conversation } from './Sidebar'
+import ArgumentGraph from './ArgumentGraph'
+import type { GraphNode, GraphEdge } from './ArgumentGraph'
 import './DebateMode.css'
 
 const COLORS: Record<string, string> = {
@@ -40,8 +42,10 @@ export default function DebateMode({ onBack, onChat }: Props) {
   const [opposition, setOpposition] = useState<string>('')
   const [turns, setTurns] = useState<DebateTurn[]>([])
   const [currentStage, setCurrentStage] = useState('')
-  const [currentRole, setCurrentRole] = useState('')
   const [activePhilosopher, setActivePhilosopher] = useState('')
+  const [graphNodes, setGraphNodes] = useState<GraphNode[]>([])
+  const [graphEdges, setGraphEdges] = useState<GraphEdge[]>([])
+  const [activeView, setActiveView] = useState<'transcript' | 'graph'>('transcript')
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [debateTitle, setDebateTitle] = useState('Debate Mode')
   const [editingTitle, setEditingTitle] = useState(false)
@@ -79,10 +83,20 @@ export default function DebateMode({ onBack, onChat }: Props) {
     setEditingTitle(false)
   }
 
+  const resetDebate = () => {
+    setStep('setup')
+    setTurns([])
+    setGraphNodes([])
+    setGraphEdges([])
+    setActiveView('transcript')
+  }
+
   const startDebate = () => {
     if (!topic.trim() || !proposition || !opposition || proposition === opposition) return
     setStep('debating')
     setTurns([])
+    setGraphNodes([])
+    setGraphEdges([])
 
     ws.current!.onmessage = (event) => {
       const msg = JSON.parse(event.data)
@@ -91,7 +105,6 @@ export default function DebateMode({ onBack, onChat }: Props) {
         stageRef.current = msg.stage
         roleRef.current = msg.role
         setCurrentStage(msg.stage)
-        setCurrentRole(msg.role)
         setActivePhilosopher(msg.philosopher)
         firstToken.current = false
       }
@@ -125,6 +138,11 @@ export default function DebateMode({ onBack, onChat }: Props) {
           t.id === activeId.current ? { ...t, done: true } : t
         ))
         setActivePhilosopher('')
+      }
+
+      if (msg.type === 'graph_update') {
+        setGraphNodes(msg.nodes ?? [])
+        setGraphEdges(msg.edges ?? [])
       }
 
       if (msg.type === 'debate_end') {
@@ -259,9 +277,10 @@ export default function DebateMode({ onBack, onChat }: Props) {
         {(step === 'debating' || step === 'done') && (
           <div className="debate-arena">
             <div className="debate-header">
-              <button className="new-debate-btn" onClick={() => { setStep('setup'); setTurns([]) }}>
+              <button className="new-debate-btn" onClick={resetDebate}>
                 ← New debate
               </button>
+
               <div className="debate-header-center">
                 <div className="debate-header-topic">"{topic}"</div>
                 <div className="debate-header-matchup">
@@ -276,7 +295,26 @@ export default function DebateMode({ onBack, onChat }: Props) {
                   </span>
                 </div>
               </div>
-              <div className="debate-status-right">
+
+              <div className="debate-header-right">
+                <div className="debate-view-toggle">
+                  <button
+                    className={`view-toggle-btn${activeView === 'transcript' ? ' active' : ''}`}
+                    onClick={() => setActiveView('transcript')}
+                  >
+                    Transcript
+                  </button>
+                  <button
+                    className={`view-toggle-btn${activeView === 'graph' ? ' active' : ''}`}
+                    onClick={() => setActiveView('graph')}
+                  >
+                    Argument Graph
+                    {graphNodes.length > 0 && (
+                      <span className="graph-pill">{graphNodes.length}</span>
+                    )}
+                  </button>
+                </div>
+
                 {step === 'debating' && activePhilosopher && (
                   <span className="speaking-pill" style={{ color: COLORS[activePhilosopher], background: COLORS[activePhilosopher] + '18' }}>
                     <span className="speaking-dot" style={{ background: COLORS[activePhilosopher] }} />
@@ -287,72 +325,78 @@ export default function DebateMode({ onBack, onChat }: Props) {
               </div>
             </div>
 
-            <div className="debate-feed">
-              {turns.map((turn, i) => {
-                const prevTurn = turns[i - 1]
-                const isNewStage = !prevTurn || prevTurn.stage !== turn.stage
-                const isStreaming = !turn.done
-                return (
-                  <Fragment key={turn.id}>
-                    {isNewStage && (
+            {activeView === 'transcript' && (
+              <div className="debate-feed">
+                {turns.map((turn, i) => {
+                  const prevTurn = turns[i - 1]
+                  const isNewStage = !prevTurn || prevTurn.stage !== turn.stage
+                  const isStreaming = !turn.done
+                  return (
+                    <Fragment key={turn.id}>
+                      {isNewStage && (
+                        <div className="stage-banner">
+                          <div className="stage-banner-line" />
+                          <div className="stage-banner-label">{turn.stage}</div>
+                          <div className="stage-banner-line" />
+                        </div>
+                      )}
+                      <div
+                        className={`debate-card${isStreaming ? ' debate-card-streaming' : ''}`}
+                        style={{
+                          borderLeftColor: COLORS[turn.philosopher],
+                          ...(isStreaming && { boxShadow: `0 2px 20px ${COLORS[turn.philosopher]}22` }),
+                        }}
+                      >
+                        <div className="debate-card-header">
+                          <div className="debate-card-avatar" style={{ background: COLORS[turn.philosopher] + '20', color: COLORS[turn.philosopher] }}>
+                            {INITIALS[turn.philosopher]}
+                          </div>
+                          <span className="debate-card-name" style={{ color: COLORS[turn.philosopher] }}>{LABELS[turn.philosopher]}</span>
+                          <span className={`debate-card-role role-${turn.role}`}>
+                            {turn.role === 'proposition' ? 'Proposition' : 'Opposition'}
+                          </span>
+                        </div>
+                        <div className="debate-card-body">
+                          {turn.content}
+                          {isStreaming && <span className="cursor">|</span>}
+                        </div>
+                      </div>
+                    </Fragment>
+                  )
+                })}
+
+                {activePhilosopher && !turns.some(t => t.philosopher === activePhilosopher && !t.done) && (
+                  <Fragment>
+                    {currentStage !== turns[turns.length - 1]?.stage && (
                       <div className="stage-banner">
                         <div className="stage-banner-line" />
-                        <div className="stage-banner-label">{turn.stage}</div>
+                        <div className="stage-banner-label">{currentStage}</div>
                         <div className="stage-banner-line" />
                       </div>
                     )}
-                    <div
-                      className={`debate-card${isStreaming ? ' debate-card-streaming' : ''}`}
-                      style={{
-                        borderLeftColor: COLORS[turn.philosopher],
-                        ...(isStreaming && { boxShadow: `0 2px 20px ${COLORS[turn.philosopher]}22` }),
-                      }}
-                    >
+                    <div className="debate-card debate-card-waiting" style={{ borderLeftColor: COLORS[activePhilosopher] }}>
                       <div className="debate-card-header">
-                        <div className="debate-card-avatar" style={{ background: COLORS[turn.philosopher] + '20', color: COLORS[turn.philosopher] }}>
-                          {INITIALS[turn.philosopher]}
+                        <div className="debate-card-avatar" style={{ background: COLORS[activePhilosopher] + '20', color: COLORS[activePhilosopher] }}>
+                          {INITIALS[activePhilosopher]}
                         </div>
-                        <span className="debate-card-name" style={{ color: COLORS[turn.philosopher] }}>{LABELS[turn.philosopher]}</span>
-                        <span className={`debate-card-role role-${turn.role}`}>
-                          {turn.role === 'proposition' ? 'Proposition' : 'Opposition'}
-                        </span>
+                        <span className="debate-card-name" style={{ color: COLORS[activePhilosopher] }}>{LABELS[activePhilosopher]}</span>
                       </div>
-                      <div className="debate-card-body">
-                        {turn.content}
-                        {isStreaming && <span className="cursor">|</span>}
-                      </div>
+                      <div className="typing-indicator"><span /><span /><span /></div>
                     </div>
                   </Fragment>
-                )
-              })}
+                )}
 
-              {activePhilosopher && !turns.some(t => t.philosopher === activePhilosopher && !t.done) && (
-                <Fragment>
-                  {currentStage !== turns[turns.length - 1]?.stage && (
-                    <div className="stage-banner">
-                      <div className="stage-banner-line" />
-                      <div className="stage-banner-label">{currentStage}</div>
-                      <div className="stage-banner-line" />
-                    </div>
-                  )}
-                  <div className="debate-card debate-card-waiting" style={{ borderLeftColor: COLORS[activePhilosopher] }}>
-                    <div className="debate-card-header">
-                      <div className="debate-card-avatar" style={{ background: COLORS[activePhilosopher] + '20', color: COLORS[activePhilosopher] }}>
-                        {INITIALS[activePhilosopher]}
-                      </div>
-                      <span className="debate-card-name" style={{ color: COLORS[activePhilosopher] }}>{LABELS[activePhilosopher]}</span>
-                    </div>
-                    <div className="typing-indicator"><span /><span /><span /></div>
-                  </div>
-                </Fragment>
-              )}
+                {step === 'done' && turns.length > 0 && (
+                  <div className="debate-end-banner">The debate has concluded</div>
+                )}
 
-              {step === 'done' && turns.length > 0 && (
-                <div className="debate-end-banner">The debate has concluded</div>
-              )}
+                <div ref={bottomRef} />
+              </div>
+            )}
 
-              <div ref={bottomRef} />
-            </div>
+            {activeView === 'graph' && (
+              <ArgumentGraph nodes={graphNodes} edges={graphEdges} />
+            )}
           </div>
         )}
       </div>
