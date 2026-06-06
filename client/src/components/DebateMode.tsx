@@ -3,6 +3,7 @@ import Sidebar from './Sidebar'
 import type { Conversation } from './Sidebar'
 import ArgumentGraph from './ArgumentGraph'
 import type { GraphNode, GraphEdge } from './ArgumentGraph'
+import { useSettings } from '../contexts/SettingsContext'
 import './DebateMode.css'
 
 const COLORS: Record<string, string> = {
@@ -36,6 +37,7 @@ interface Props {
 }
 
 export default function DebateMode({ onBack, onChat }: Props) {
+  const { settings } = useSettings()
   const [step, setStep] = useState<'setup' | 'debating' | 'done'>('setup')
   const [topic, setTopic] = useState('')
   const [proposition, setProposition] = useState<string>('')
@@ -64,7 +66,7 @@ export default function DebateMode({ onBack, onChat }: Props) {
   }, [])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (settings.autoScroll) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [turns])
 
   useEffect(() => {
@@ -151,7 +153,7 @@ export default function DebateMode({ onBack, onChat }: Props) {
       }
     }
 
-    ws.current!.send(JSON.stringify({ type: 'start_debate', topic, proposition, opposition }))
+    ws.current!.send(JSON.stringify({ type: 'start_debate', topic, proposition, opposition, responseLength: settings.responseLength }))
   }
 
   const philosophers = Object.keys(LABELS)

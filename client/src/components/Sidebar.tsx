@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSettings } from '../contexts/SettingsContext'
 import './Sidebar.css'
 
 const COLORS: Record<string, string> = {
@@ -41,6 +42,7 @@ export default function Sidebar({
   conversations, activeId, activeMode, onSelect, onNew, onRename, onDelete,
   onBack, onDebate, onChat, activePhilosophers, onTogglePhilosopher
 }: Props) {
+  const { openSettings } = useSettings()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
   const [hoveredId, setHoveredId] = useState<string | null>(null)
@@ -150,7 +152,7 @@ export default function Sidebar({
 
       <div className="sidebar-bottom">
         <div className="sidebar-item" onClick={onBack}>Back to home</div>
-        <div className="sidebar-item">Settings</div>
+        <div className="sidebar-item" onClick={openSettings}>Settings</div>
         <div className="sidebar-profile">
           <div className="sidebar-profile-avatar">AE</div>
           <div className="sidebar-profile-info">

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Sidebar from './Sidebar'
 import type { Conversation } from './Sidebar'
+import { useSettings } from '../contexts/SettingsContext'
 import './GroupChat.css'
 
 const COLORS: Record<string, string> = {
@@ -59,6 +60,7 @@ interface Props {
 }
 
 export default function GroupChat({ initialMessage, onBack, onDebate }: Props) {
+  const { settings } = useSettings()
   const [conversations, setConversations] = useState<ConversationData[]>([])
   const [activeId, setActiveId] = useState<string>('')
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -207,7 +209,7 @@ export default function GroupChat({ initialMessage, onBack, onDebate }: Props) {
   }, [])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (settings.autoScroll) bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, typingPhilosophers])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -241,7 +243,7 @@ export default function GroupChat({ initialMessage, onBack, onDebate }: Props) {
         ? { ...c, title: c.title === 'New conversation' ? text.slice(0, 40) : c.title, messages: [...c.messages, userMsg] }
         : c
     ))
-    ws.current!.send(JSON.stringify({ type: 'chat', text, philosophers: activePhilosophers }))
+    ws.current!.send(JSON.stringify({ type: 'chat', text, philosophers: activePhilosophers, responseLength: settings.responseLength }))
   }
 
   const send = () => {

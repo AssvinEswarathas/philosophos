@@ -110,20 +110,25 @@ async function runDebate(
   ws: WebSocket,
   topic: string,
   proposition: PhilosopherName,
-  opposition: PhilosopherName
+  opposition: PhilosopherName,
+  responseLength?: string
 ) {
   const debateId = `debate-${Date.now()}`;
   const graphNodes: GraphNode[] = []; // tracks all extracted nodes for this debate
 
   await clearGraph(debateId).catch(() => {}); // ignore if Neo4j unavailable
 
+  const lenHint = responseLength === 'short' ? '2-3 sentences.'
+    : responseLength === 'long' ? '6-8 sentences with depth and nuance.'
+    : '3-5 sentences.'
+
   const stages = [
-    { role: 'proposition', label: 'Opening Statement', instruction: `You are arguing FOR the proposition: "${topic}". Give a compelling opening statement supporting this position. Be passionate and grounded. 3-5 sentences.` },
-    { role: 'opposition', label: 'Opening Statement', instruction: `You are arguing AGAINST the proposition: "${topic}". Give a compelling opening statement opposing this position. 3-5 sentences.` },
-    { role: 'proposition', label: 'Rebuttal', instruction: `You are arguing FOR "${topic}". The opposition just made their opening statement. Directly rebut their argument and reinforce your position. 3-5 sentences.` },
-    { role: 'opposition', label: 'Rebuttal', instruction: `You are arguing AGAINST "${topic}". The proposition just made their rebuttal. Directly counter their points and strengthen your opposition. 3-5 sentences.` },
-    { role: 'proposition', label: 'Closing Statement', instruction: `You are arguing FOR "${topic}". Make your final closing statement. Summarize your strongest points and end powerfully. 3-5 sentences.` },
-    { role: 'opposition', label: 'Closing Statement', instruction: `You are arguing AGAINST "${topic}". Make your final closing statement. Summarize why the proposition fails and close decisively. 3-5 sentences.` },
+    { role: 'proposition', label: 'Opening Statement', instruction: `You are arguing FOR the proposition: "${topic}". Give a compelling opening statement supporting this position. Be passionate and grounded. ${lenHint}` },
+    { role: 'opposition', label: 'Opening Statement', instruction: `You are arguing AGAINST the proposition: "${topic}". Give a compelling opening statement opposing this position. ${lenHint}` },
+    { role: 'proposition', label: 'Rebuttal', instruction: `You are arguing FOR "${topic}". The opposition just made their opening statement. Directly rebut their argument and reinforce your position. ${lenHint}` },
+    { role: 'opposition', label: 'Rebuttal', instruction: `You are arguing AGAINST "${topic}". The proposition just made their rebuttal. Directly counter their points and strengthen your opposition. ${lenHint}` },
+    { role: 'proposition', label: 'Closing Statement', instruction: `You are arguing FOR "${topic}". Make your final closing statement. Summarize your strongest points and end powerfully. ${lenHint}` },
+    { role: 'opposition', label: 'Closing Statement', instruction: `You are arguing AGAINST "${topic}". Make your final closing statement. Summarize why the proposition fails and close decisively. ${lenHint}` },
   ];
 
   const history: { role: 'user' | 'assistant', content: string }[] = [];
@@ -154,14 +159,23 @@ CRITICAL: Argue this position fully even if it differs from your usual views. Ne
   send(ws, { type: 'debate_end' });
 }
 
+function lengthInstruction(responseLength?: string): string {
+  if (responseLength === 'short') return '\n\nBe concise: 1-2 sentences only.'
+  if (responseLength === 'long') return '\n\nBe thorough: write 6-8 sentences with depth and nuance.'
+  return ''
+}
+
 async function getPhilosopherResponse(
   philosopher: PhilosopherName,
   history: Message[],
-  ws: WebSocket
+  ws: WebSocket,
+  responseLength?: string
 ): Promise<string> {
   send(ws, { type: 'turn_start', philosopher });
 
-  const contextPrompt = prompts[philosopher] + '\n\nCRITICAL: Never start with your name. Never write your name followed by a colon. Just speak directly.';
+  const contextPrompt = prompts[philosopher]
+    + '\n\nCRITICAL: Never start with your name. Never write your name followed by a colon. Just speak directly.'
+    + lengthInstruction(responseLength);
 
   const formattedHistory = history.map(m => ({
     role: m.role as 'user' | 'assistant',
@@ -217,7 +231,7 @@ export function setupWebSocket(server: Server) {
           send(ws, { type: 'response_start', philosophers });
 
           for (const philosopher of philosophers) {
-            const content = await getPhilosopherResponse(philosopher, history, ws);
+            const content = await getPhilosopherResponse(philosopher, history, ws, message.responseLength);
             history.push({ role: 'assistant', name: philosopher, content });
           }
 
@@ -225,7 +239,7 @@ export function setupWebSocket(server: Server) {
         }
 
         if (message.type === 'start_debate') {
-          await runDebate(ws, message.topic, message.proposition, message.opposition);
+          await runDebate(ws, message.topic, message.proposition, message.opposition, message.responseLength);
         }
       } catch (err) {
         console.error(err);

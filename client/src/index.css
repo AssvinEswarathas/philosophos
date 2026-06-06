@@ -1,3 +1,306 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body, #root { width: 100%; min-height: 100vh; }
 body { font-family: 'Inter', -apple-system, sans-serif; }
+
+/* ── Settings Modal ─────────────────────────────────────── */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  animation: overlayIn 0.15s ease;
+}
+@keyframes overlayIn { from { opacity: 0; } to { opacity: 1; } }
+
+.settings-modal {
+  background: #fff;
+  border-radius: 16px;
+  width: 460px;
+  max-width: calc(100vw - 40px);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.16);
+  overflow: hidden;
+  animation: modalIn 0.18s ease;
+}
+@keyframes modalIn { from { transform: scale(0.96) translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.settings-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111;
+  margin: 0;
+}
+.settings-close {
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: #bbb;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+.settings-close:hover { background: #f0f0f0; color: #555; }
+
+.settings-body { padding: 4px 0 8px; }
+
+.settings-section {
+  padding: 12px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+.settings-section:last-child { border-bottom: none; }
+
+.settings-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #c0c0c0;
+  padding: 0 24px 8px;
+  display: block;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 24px;
+  gap: 24px;
+}
+.settings-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.settings-row-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111;
+}
+.settings-row-sub {
+  font-size: 11px;
+  color: #bbb;
+}
+
+/* Segmented control */
+.settings-segment {
+  display: flex;
+  background: #f2f2f2;
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.segment-btn {
+  background: none;
+  border: none;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #999;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.segment-btn.active {
+  background: #fff;
+  color: #111;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+.segment-btn:hover:not(.active) { color: #555; }
+
+/* Toggle switch */
+.settings-toggle {
+  width: 44px;
+  height: 24px;
+  background: #ddd;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.settings-toggle.on { background: #6B4FBB; }
+.settings-toggle-thumb {
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+.settings-toggle.on .settings-toggle-thumb { transform: translateX(20px); }
+
+/* ── Dark mode ──────────────────────────────────────────────────────────────
+   Palette (Zinc-based, inspired by Radix/shadcn dark scales):
+   --bg-0: #09090b   deepest surface (body, page root)
+   --bg-1: #111113   base surface (main areas)
+   --bg-2: #18181b   raised surface (sidebar, topbars, cards)
+   --bg-3: #27272a   interactive surface (inputs, hovers)
+   --bg-4: #3f3f46   strong interactive (segment controls)
+   --border: #27272a  subtle dividers
+   --border-s: #3f3f46 visible dividers
+   --text-1: #fafafa  primary text
+   --text-2: #a1a1aa  secondary text
+   --text-3: #71717a  muted / placeholders
+   --accent: #8b6dc8  purple adjusted for dark backgrounds
+   --accent-bg: #1e1730 purple-tinted background
+   ────────────────────────────────────────────────────────────────────────── */
+
+html[data-theme="dark"] { color-scheme: dark; }
+
+/* Root surfaces */
+html[data-theme="dark"] .app-shell          { background: #09090b !important; }
+html[data-theme="dark"] .chat-main          { background: #111113 !important; }
+html[data-theme="dark"] .debate-main        { background: #111113 !important; }
+
+/* ── Sidebar ────────────────────────────────────────────── */
+html[data-theme="dark"] .sidebar            { background: #18181b !important; border-right-color: #27272a !important; }
+html[data-theme="dark"] .sidebar-top        { border-bottom-color: #27272a !important; }
+html[data-theme="dark"] .sidebar-logo       { color: #fafafa !important; }
+html[data-theme="dark"] .sidebar-section    { border-bottom-color: #27272a !important; }
+html[data-theme="dark"] .sidebar-section-label { color: #52525b !important; }
+html[data-theme="dark"] .philosopher-filter { background: #27272a !important; border-color: transparent !important; }
+html[data-theme="dark"] .philosopher-filter:hover { background: #3f3f46 !important; }
+html[data-theme="dark"] .philosopher-filter-name { color: #a1a1aa !important; }
+html[data-theme="dark"] .mode-item          { color: #71717a !important; }
+html[data-theme="dark"] .mode-item:hover    { background: #27272a !important; color: #fafafa !important; }
+html[data-theme="dark"] .mode-item.mode-active { background: #1e1730 !important; color: #a78bfa !important; }
+html[data-theme="dark"] .sidebar-conv:hover { background: #27272a !important; }
+html[data-theme="dark"] .sidebar-conv.active { background: #1e1730 !important; }
+html[data-theme="dark"] .sidebar-conv-title { color: #a1a1aa !important; }
+html[data-theme="dark"] .sidebar-conv.active .sidebar-conv-title { color: #a78bfa !important; }
+html[data-theme="dark"] .sidebar-empty      { color: #3f3f46 !important; }
+html[data-theme="dark"] .sidebar-bottom     { border-top-color: #27272a !important; }
+html[data-theme="dark"] .sidebar-item       { color: #71717a !important; }
+html[data-theme="dark"] .sidebar-item:hover { background: #27272a !important; color: #fafafa !important; }
+html[data-theme="dark"] .sidebar-profile-name  { color: #fafafa !important; }
+html[data-theme="dark"] .sidebar-profile-plan  { color: #52525b !important; }
+html[data-theme="dark"] .conv-action-btn        { color: #52525b !important; }
+html[data-theme="dark"] .conv-action-btn:hover  { background: #27272a !important; color: #a1a1aa !important; }
+
+/* ── Topbar (shared) ────────────────────────────────────── */
+html[data-theme="dark"] .chat-topbar        { background: #18181b !important; border-bottom-color: #27272a !important; }
+html[data-theme="dark"] .chat-topbar-title  { color: #fafafa !important; }
+html[data-theme="dark"] .chat-topbar-title.editable:hover { background: #27272a !important; }
+html[data-theme="dark"] .topbar-edit-hint   { color: #52525b !important; }
+html[data-theme="dark"] .toggle-sidebar     { color: #71717a !important; }
+html[data-theme="dark"] .toggle-sidebar:hover { background: #27272a !important; color: #fafafa !important; }
+html[data-theme="dark"] .topbar-title-input { background: #27272a !important; color: #fafafa !important; border-color: #8b6dc8 !important; }
+
+/* ── Chat empty state ───────────────────────────────────── */
+html[data-theme="dark"] .empty-title        { color: #fafafa !important; }
+html[data-theme="dark"] .empty-sub          { color: #71717a !important; }
+html[data-theme="dark"] .topic-pill         { background: #1e1730 !important; border-color: #2d2050 !important; color: #a78bfa !important; }
+html[data-theme="dark"] .topic-pill:hover   { background: #2d2050 !important; }
+
+/* ── Chat messages ──────────────────────────────────────── */
+html[data-theme="dark"] .chat-messages      { background: #111113 !important; }
+html[data-theme="dark"] .philosopher-bubble { background: #18181b !important; border-color: #27272a !important; color: #e4e4e7 !important; }
+html[data-theme="dark"] .msg-name           { opacity: 0.85; }
+html[data-theme="dark"] .msg .typing-indicator { background: #18181b !important; border-color: #27272a !important; }
+html[data-theme="dark"] .msg .typing-indicator span { background: #52525b !important; }
+
+/* ── Chat input ─────────────────────────────────────────── */
+html[data-theme="dark"] .chat-input-area    { background: #111113 !important; border-top-color: #27272a !important; }
+html[data-theme="dark"] .chat-input         { background: #18181b !important; border-color: #27272a !important; color: #fafafa !important; }
+html[data-theme="dark"] .chat-input::placeholder { color: #52525b !important; }
+html[data-theme="dark"] .chat-input:focus   { border-color: #8b6dc8 !important; background: #1c1c20 !important; }
+
+/* ── Debate setup ───────────────────────────────────────── */
+html[data-theme="dark"] .debate-setup       { background: #111113 !important; }
+html[data-theme="dark"] .debate-setup-card  { background: #18181b !important; border-color: #27272a !important; box-shadow: 0 2px 32px rgba(0,0,0,0.5) !important; }
+html[data-theme="dark"] .debate-setup-label { color: #a78bfa !important; }
+html[data-theme="dark"] .debate-setup-title { color: #fafafa !important; }
+html[data-theme="dark"] .debate-setup-sub   { color: #71717a !important; }
+html[data-theme="dark"] .debate-setup-divider { background: #27272a !important; }
+html[data-theme="dark"] .debate-field label { color: #52525b !important; }
+html[data-theme="dark"] .debate-field input { background: #27272a !important; border-color: #27272a !important; color: #fafafa !important; }
+html[data-theme="dark"] .debate-field input:focus { border-color: #8b6dc8 !important; box-shadow: 0 0 0 3px rgba(139,109,200,0.12) !important; }
+html[data-theme="dark"] .debate-field input::placeholder { color: #52525b !important; }
+html[data-theme="dark"] .debate-vs          { color: #3f3f46 !important; }
+html[data-theme="dark"] .role-badge.proposition { background: #1e1730 !important; color: #a78bfa !important; }
+html[data-theme="dark"] .role-badge.opposition  { background: #2d1515 !important; color: #f87171 !important; }
+html[data-theme="dark"] .debate-role > label    { color: #71717a !important; }
+html[data-theme="dark"] .picker-card        { background: #27272a !important; border-color: transparent !important; }
+html[data-theme="dark"] .picker-card:hover:not(.disabled) { background: #1e1730 !important; border-color: #4c3d7a !important; }
+html[data-theme="dark"] .picker-name        { color: #a1a1aa !important; }
+html[data-theme="dark"] .debate-start-btn:disabled { opacity: 0.2 !important; }
+
+/* ── Debate arena ───────────────────────────────────────── */
+html[data-theme="dark"] .debate-arena       { background: #111113 !important; }
+html[data-theme="dark"] .debate-header      { background: #18181b !important; border-bottom-color: #27272a !important; }
+html[data-theme="dark"] .debate-header-topic { color: #fafafa !important; }
+html[data-theme="dark"] .new-debate-btn     { background: transparent !important; border-color: #27272a !important; color: #71717a !important; }
+html[data-theme="dark"] .new-debate-btn:hover { background: #27272a !important; color: #fafafa !important; border-color: #3f3f46 !important; }
+html[data-theme="dark"] .debate-view-toggle { background: #27272a !important; }
+html[data-theme="dark"] .view-toggle-btn    { color: #52525b !important; }
+html[data-theme="dark"] .view-toggle-btn.active { background: #18181b !important; color: #fafafa !important; box-shadow: 0 1px 4px rgba(0,0,0,0.5) !important; }
+html[data-theme="dark"] .speaking-pill      { opacity: 0.9; }
+html[data-theme="dark"] .done-pill          { background: #052e16 !important; color: #4ade80 !important; }
+
+/* ── Debate feed ────────────────────────────────────────── */
+html[data-theme="dark"] .debate-feed        { background: #111113 !important; }
+html[data-theme="dark"] .stage-banner-line  { background: #27272a !important; }
+html[data-theme="dark"] .stage-banner-label { color: #3f3f46 !important; }
+html[data-theme="dark"] .debate-card        { background: #18181b !important; border-color: #27272a !important; }
+html[data-theme="dark"] .debate-card-body   { color: #d4d4d8 !important; }
+html[data-theme="dark"] .debate-card-role.role-proposition { background: #1e1730 !important; color: #a78bfa !important; }
+html[data-theme="dark"] .debate-card-role.role-opposition  { background: #2d1515 !important; color: #f87171 !important; }
+html[data-theme="dark"] .debate-end-banner  { color: #3f3f46 !important; border-top-color: #27272a !important; }
+html[data-theme="dark"] .debate-card .typing-indicator span { background: #3f3f46 !important; }
+
+/* ── Argument graph ─────────────────────────────────────── */
+html[data-theme="dark"] .graph-container    { background: #0d0d10 !important; }
+html[data-theme="dark"] .graph-empty-text   { color: #3f3f46 !important; }
+html[data-theme="dark"] .graph-empty-sub    { color: #27272a !important; }
+html[data-theme="dark"] .graph-tooltip      { background: #18181b !important; border-color: #27272a !important; }
+html[data-theme="dark"] .graph-tooltip-text { color: #d4d4d8 !important; }
+html[data-theme="dark"] .graph-legend       { background: rgba(24,24,27,0.95) !important; border-color: #27272a !important; }
+html[data-theme="dark"] .graph-node-count   { background: rgba(24,24,27,0.95) !important; border-color: #27272a !important; color: #52525b !important; }
+
+/* ── Settings modal ─────────────────────────────────────── */
+html[data-theme="dark"] .settings-modal     { background: #18181b !important; }
+html[data-theme="dark"] .settings-header    { border-bottom-color: #27272a !important; }
+html[data-theme="dark"] .settings-title     { color: #fafafa !important; }
+html[data-theme="dark"] .settings-close     { color: #52525b !important; }
+html[data-theme="dark"] .settings-close:hover { background: #27272a !important; color: #fafafa !important; }
+html[data-theme="dark"] .settings-section   { border-bottom-color: #27272a !important; }
+html[data-theme="dark"] .settings-section-label { color: #3f3f46 !important; }
+html[data-theme="dark"] .settings-row-name  { color: #e4e4e7 !important; }
+html[data-theme="dark"] .settings-row-sub   { color: #52525b !important; }
+html[data-theme="dark"] .settings-segment   { background: #27272a !important; }
+html[data-theme="dark"] .segment-btn        { color: #52525b !important; }
+html[data-theme="dark"] .segment-btn.active { background: #3f3f46 !important; color: #fafafa !important; box-shadow: 0 1px 4px rgba(0,0,0,0.5) !important; }
+html[data-theme="dark"] .segment-btn:hover:not(.active) { color: #a1a1aa !important; }
+html[data-theme="dark"] .settings-toggle    { background: #27272a !important; }
+html[data-theme="dark"] .settings-toggle.on { background: #6B4FBB !important; }
+
+/* ── Font size ──────────────────────────────────────────── */
+[data-fontsize="small"] .philosopher-bubble,
+[data-fontsize="small"] .user-bubble { font-size: 13px; }
+[data-fontsize="small"] .debate-card-body { font-size: 12px; }
+[data-fontsize="small"] .chat-input { font-size: 13px; }
+
+[data-fontsize="large"] .philosopher-bubble,
+[data-fontsize="large"] .user-bubble { font-size: 17px; }
+[data-fontsize="large"] .debate-card-body { font-size: 16px; }
+[data-fontsize="large"] .chat-input { font-size: 17px; }
